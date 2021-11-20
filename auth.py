@@ -10,7 +10,6 @@ res = requests.post('https://www.reddit.com/api/v1/access_token',
                     auth=auth, data=data, headers=headers)
 
 
-print(res.json())
 # convert response to JSON and pull access_token value
 TOKEN = res.json()['access_token']
 

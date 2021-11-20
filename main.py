@@ -1,29 +1,57 @@
 import requests
 import pandas as pd
+from requests.api import get
 from auth import headers
-# from rich import print
 from rich.console import Console
 from rich.json import JSON
+import json
+from comment import Comment
+
+from post import Post
 
 
-print(headers)
 requests.get('https://oauth.reddit.com/api/v1/me', headers=headers)
 
 
 
-res = requests.get('http://oauth.reddit.com/r/python/hot', headers=headers, params={'limit': '50'}) # limit w ilosci postow wyswietlanych
-print("xD")
+
+def get_author_details(author_fullname):
+    pass
+
+def get_post_details(subreddit, id):
+    params = {'article': id}
+    query = f'http://oauth.reddit.com/r/{subreddit}/comments/article'
+    res = requests.get(query, headers=headers, params=params)
+    comments = []
+    for c in res.json()[1]['data']['children']:
+        c = c['data']
+        
+        ### TODO: if replies available: find all children and make a tree
+        if c['replies']:
+            pass
+            
+        comment = Comment(c['id'], c['body'], c['author'], c['score'])
+        comments.append(comment.__dict__)
+    return comments
+    
+def get_posts(subreddit, limit):
+    params = {'limit': limit}
+    query = f'http://oauth.reddit.com/r/{subreddit}/hot'
+    res = requests.get(query, headers=headers, params=params)
+    post_list = []
+    for p in res.json()['data']['children']:
+        p = p['data']
+        post = Post(p['title'], p['subreddit'], p['score'], p['author_fullname'], p['selftext'], p['id'])
+        comments = get_post_details(post.subreddit, post.id)
+        post.set_comments(comments)
+        post_list.append(post)
+    return post_list
 
 
-df = pd.DataFrame()
 
-for post in res.json()['data']['children']:
-    df = df.append({
-        'subreddit': post['data']['subreddit'],
-        'title': post['data']['title'],
-        'selftext': post['data']['selftext'],
-        'upvote_ratio': post['data']['upvote_ratio'],
-        'ups': post['data']['ups'],
-        'downs': post['data']['downs'],
-        'score': post['data']['ups']
-    }, ignore_index=True)
+posts = get_posts("xqcow", 5)
+
+with open("response.json", 'w') as f:
+    for post in posts:
+        
+        json.dump(post.__dict__, f, indent=4)
