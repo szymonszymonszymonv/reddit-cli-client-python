@@ -10,15 +10,8 @@ class Post():
         self.comments = []
         
         
-        # 'subreddit': post['data']['subreddit'],
-        # 'author_fullname': post['data']['author_fullname'],
-        # 'name': post['data']['name'],
-        # 'title': post['data']['title'],
-        # 'selftext': post['data']['selftext'],
-        # 'upvote_ratio': post['data']['upvote_ratio'],
-        # 'ups': post['data']['ups'],
-        # 'downs': post['data']['downs'],
-        # 'score': post['data']['ups']
-        
     def set_comments(self, comments):
         self.comments = comments
+        
+    def __str__(self):
+        return f"{self.title}\n{self.score}"

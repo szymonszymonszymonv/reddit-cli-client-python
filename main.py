@@ -2,20 +2,16 @@ import requests
 import pandas as pd
 from requests.api import get
 from auth import headers
-from rich.console import Console
-from rich.json import JSON
+
 import json
 from comment import Comment
-
 from post import Post
 
 
 requests.get('https://oauth.reddit.com/api/v1/me', headers=headers)
 
 
-
-
-def get_author_details(author_fullname):
+def get_author_details():
     pass
 
 def get_post_details(subreddit, id):
@@ -47,11 +43,3 @@ def get_posts(subreddit, limit):
         post_list.append(post)
     return post_list
 
-
-
-posts = get_posts("xqcow", 5)
-
-with open("response.json", 'w') as f:
-    for post in posts:
-        
-        json.dump(post.__dict__, f, indent=4)
