@@ -24,4 +24,4 @@ class Post():
         self.comments = comments
         
     def __str__(self):
-        return f"[orange4]{self.title}\n[orange1]score: {self.score}"
+        return f"[orange3]{self.title}\n[orange1]score: {self.score}"

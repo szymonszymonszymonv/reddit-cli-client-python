@@ -15,7 +15,7 @@ def get_author_details():
     pass
 
 def get_post_details(subreddit, id):
-    params = {'article': id}
+    params = {'article': id, 'limit':100}
     query = f'http://oauth.reddit.com/r/{subreddit}/comments/article'
     res = requests.get(query, headers=headers, params=params)
     comments = []
@@ -24,10 +24,13 @@ def get_post_details(subreddit, id):
         
         ### TODO: if replies available: find all children and make a tree
         # if c['replies']:
-        #     pass
-            
-        # comment = Comment(c['id'], c['body'], c['author'], c['score'])
-        # comments.append(comment.__dict__)
+        #     pass.
+        try:
+            comment = Comment(c['id'], c['body'], c['author'], c['score'])
+            comments.append(comment.__dict__)
+        except:
+            continue
+        
     return comments
     
 def get_posts(subreddit, limit):
@@ -44,13 +47,21 @@ def get_posts(subreddit, limit):
     return post_list
 
 
-def write_to_file(collection):
-    with open('response.json', 'w') as file:
+def write_to_file(collection, filename):
+    with open(filename, 'w') as file:
         file.write('[')
         for i in range(0, len(collection)):
             item = collection[i]
+            with open(f"{i}comments_{filename}", 'w') as file2:
+                file2.write('[')
+                for i in range(0, len(item.comments)):
+                    json.dump(item.comments[i], file2)
+                    if i != len(item.comments) - 1:
+                        file2.write(',')
+                file2.write(']')
+                            
             json.dump(item.__dict__, file)
             if i != len(collection) - 1:
                 file.write(',')
         file.write(']')
-# write_to_file(get_posts("all", 5))
+# write_to_file(get_posts("all", 5), 'test1.json')
