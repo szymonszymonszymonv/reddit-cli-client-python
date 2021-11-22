@@ -1,3 +1,5 @@
+import json
+
 
 class Post():
     def __init__(self, title: str, subreddit: str, score: int, author_fullname: str, selftext: str, id: str):
@@ -9,9 +11,17 @@ class Post():
         self.id = id
         self.comments = []
         
+    def build_from_json():
+        posts = []
+        with open('response.json', 'r') as file:
+            data = json.load(file)
+            for post in data:
+                p = Post(post['title'], post['subreddit'], post['score'], post['author_fullname'], post['selftext'], post['id'])
+                posts.append(p)
+        return posts
         
     def set_comments(self, comments):
         self.comments = comments
         
     def __str__(self):
-        return f"{self.title}\n{self.score}"
+        return f"[orange4]{self.title}\n[orange1]score: {self.score}"

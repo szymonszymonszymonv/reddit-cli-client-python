@@ -23,11 +23,11 @@ def get_post_details(subreddit, id):
         c = c['data']
         
         ### TODO: if replies available: find all children and make a tree
-        if c['replies']:
-            pass
+        # if c['replies']:
+        #     pass
             
-        comment = Comment(c['id'], c['body'], c['author'], c['score'])
-        comments.append(comment.__dict__)
+        # comment = Comment(c['id'], c['body'], c['author'], c['score'])
+        # comments.append(comment.__dict__)
     return comments
     
 def get_posts(subreddit, limit):
@@ -43,3 +43,14 @@ def get_posts(subreddit, limit):
         post_list.append(post)
     return post_list
 
+
+def write_to_file(collection):
+    with open('response.json', 'w') as file:
+        file.write('[')
+        for i in range(0, len(collection)):
+            item = collection[i]
+            json.dump(item.__dict__, file)
+            if i != len(collection) - 1:
+                file.write(',')
+        file.write(']')
+# write_to_file(get_posts("all", 5))
