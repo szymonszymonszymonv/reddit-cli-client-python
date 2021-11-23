@@ -5,6 +5,8 @@ from rich.layout import Layout
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
+from rich.spinner import Spinner
+from rich.prompt import Prompt
 from rich import print as rprint
 import keyboard
 import os
@@ -14,33 +16,32 @@ from post import Post
 
 console = Console()
 
-# when switching from PostsView to CommentsView - update layout['main'] 
-# tablegrid with panels - each post a panel
-
-class View():
-    pass
-
 class PostsView():
     def __init__(self):
         self.active_index = 0
         self.posts = []
         self.panels = []
         self.layouts = []
-        
+        self.subreddit = "all"
+        self.page = 0
         self.layout = Layout()
         self.layout.split(
             Layout(name="header", size=3),
             Layout(name="main", ratio=1),
             Layout(name="footer", size=3)
         )
-        instructions = "↑: navigate up\t↓: navigate down\tEnter: show details"
-        self.layout['header'].update(Panel("[b][yellow]Welcome to Reddit!", border_style="yellow"))
-        self.layout['footer'].update(Panel(f"[orange1]{instructions}", border_style="orange1"))
     
     # load posts from api and show spinner
-    def init_posts(self):
-        self.posts = fetch.get_posts("all", 10)
+    def init_posts(self, subreddit="all", after="", before=""):
+        self.subreddit=subreddit
+        self.init_header_footer()
+        self.posts = fetch.get_posts(subreddit, 5, after, before)
         pass
+    
+    def init_header_footer(self):
+        instructions = "↑: navigate up / ↓: navigate down / Enter: show details"
+        self.layout['header'].update(Panel(f"[b][yellow]You are browsing /r/{self.subreddit}", border_style="yellow"))
+        self.layout['footer'].update(Panel(f"[orange1]{instructions}", border_style="orange1"))
     
     def init_posts_from_file(self):
         self.posts = Post.build_from_json()
@@ -49,9 +50,10 @@ class PostsView():
         idx = 0
         layout = self.layout['main']
         for post in self.posts:
-            panel = Panel(post.__str__(), style="blue", border_style="bright_black")
+            panel = Panel(post.__str__(), style="orange4", height=5, border_style="bright_black")
             self.panels.append(panel)
-            layout_item = Layout(name="item{idx}", size=4)
+            layout_item = Layout(name="item{idx}", size=5)
+            
             layout_item.update(panel)
             self.layouts.append(layout_item)
             layout.add_split(layout_item)
@@ -62,21 +64,21 @@ class PostsView():
 
 # tablegrid with panels - each comment a panel
 class CommentsView():
-    def __init__(self, title):
+    def __init__(self, post):
         self.active_index = 0
         self.comments = []
-        self.post = title
+        self.post = post
         self.panels = []
         self.layouts = []
         
         self.layout = Layout()
         self.layout.split(
-            Layout(name="header", size=3),
+            Layout(name="header", size=6),
             Layout(name="main", ratio=1),
             Layout(name="footer", size=3)
         )
-        instructions = "↑: navigate up\t↓: navigate down\tBackspace: show posts"
-        self.layout['header'].update(Panel(f"[b][yellow3]{self.post}", border_style="red"))
+        instructions = "↑: navigate up / ↓: navigate down / Backspace: show posts"
+        self.layout['header'].update(Panel(f"[b][yellow3]{self.post.title}\n[yellow2]{self.post.selftext}", border_style="red"))
         self.layout['footer'].update(Panel(f"[orange1]{instructions}", border_style="orange1"))
 
     def init_comments(self, post):
@@ -93,7 +95,7 @@ class CommentsView():
         for comment in self.comments:
             panel = Panel(comment.__str__(), style="blue", border_style="bright_black")
             self.panels.append(panel)
-            layout_item = Layout(name="item{idx}", size=4)
+            layout_item = Layout(name="item{idx}", size=5)
             layout_item.update(panel)
             self.layouts.append(layout_item)
             layout.add_split(layout_item)
@@ -123,20 +125,22 @@ class Container():
         logger.info("loading post view")
         
         pv = PostsView()
-        pv.init_posts()
+        pv.init_posts(subreddit="all")
         self.layout.update(pv.build_view())
         self.posts_view = pv
         self.active_view = pv
         
     def load_comms_view(self):
         logger.info("loading comments view")
-        cv = CommentsView(self.posts_view.posts[self.active_item].title)
+        cv = CommentsView(self.posts_view.posts[self.active_item])
         cv.init_comments(self.posts_view.posts[self.active_item])
         self.layout.update(cv.build_view())
         self.comms_view = cv
         
     def change_to_comms_view(self):
         logger.info("changing to comments view")
+        if len(self.posts_view.posts[self.active_item].comments) == 0:
+            return 0
         self.posts_view.active_index = self.active_item
         self.load_comms_view()
         self.active_item = 0
@@ -148,6 +152,32 @@ class Container():
         self.active_item = self.posts_view.active_index
         self.layout.update(self.posts_view.layout)
         
+    def posts_turn_page_right(self):
+        self.active_item = 0
+        logger.info("turning page right")
+        self.layout.update(Panel(Spinner('material', text="LOADING POSTS"), style="orange4"))
+        last_post = self.posts_view.posts[-1]
+        pv = PostsView()
+        pv.page = self.posts_view.page + 1
+        pv.init_posts(self.posts_view.subreddit, f"t3_{last_post.id}")
+        self.layout.update(pv.build_view())
+        self.posts_view = pv
+        self.active_view = pv
+        pass
+    
+    def posts_turn_page_left(self):
+        if self.posts_view.page > 0:
+            self.active_item = 0
+            logger.info("turning page right")
+            self.layout.update(Panel(Spinner('material', text="LOADING POSTS"), style="orange4"))
+            first_post = self.posts_view.posts[0]
+            pv = PostsView()
+            pv.page = self.posts_view.page - 1
+            pv.init_posts(self.posts_view.subreddit, before=f"t3_{first_post.id}")
+            self.layout.update(pv.build_view())
+            self.posts_view = pv
+            self.active_view = pv
+    
     def panels_go_up(self):
         logger.info("GOING UP")
         idx = self.active_item
@@ -182,19 +212,24 @@ class Container():
         
 cont = Container()
 logger.info("creating a Container instance")
-
 cont.load_posts_view()
-        
+
 keyboard.add_hotkey('enter', lambda: cont.change_to_comms_view())
 logger.info("adding enter listener")
 keyboard.add_hotkey('backspace', lambda: cont.change_to_posts_view())
 logger.info("adding backspace listener")
 keyboard.add_hotkey('up', lambda: cont.handle_arrow_up())
+logger.info("adding up arrow listener")
 keyboard.add_hotkey('down', lambda: cont.handle_arrow_down())
+logger.info("adding down arrow listener")
+keyboard.add_hotkey('right', lambda: cont.posts_turn_page_right())
+logger.info("adding right arrow listener")
+keyboard.add_hotkey('left', lambda: cont.posts_turn_page_left())
+logger.info("adding left arrow listener")
 
-with Live(cont.layout, console=console) as live:
+with Live(cont.layout, console=console, refresh_per_second=15) as live:
     while(True):
-        
-        keyboard.wait()
         logger.info("waiting for keyboard input")
-        
+        keyboard.wait()
+
+

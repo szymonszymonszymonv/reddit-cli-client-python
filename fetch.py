@@ -1,3 +1,4 @@
+import datetime
 import requests
 import pandas as pd
 from requests.api import get
@@ -15,7 +16,7 @@ def get_author_details():
     pass
 
 def get_post_details(subreddit, id):
-    params = {'article': id, 'limit':100}
+    params = {'article': id, 'limit':10}
     query = f'http://oauth.reddit.com/r/{subreddit}/comments/article'
     res = requests.get(query, headers=headers, params=params)
     comments = []
@@ -33,14 +34,30 @@ def get_post_details(subreddit, id):
         
     return comments
     
-def get_posts(subreddit, limit):
-    params = {'limit': limit}
-    query = f'http://oauth.reddit.com/r/{subreddit}/hot'
+def get_posts(subreddit, limit, after="", before=""):
+    params = {'limit': limit, "after":after, "before":before}
+    query = f'http://oauth.reddit.com/r/{subreddit}'
     res = requests.get(query, headers=headers, params=params)
     post_list = []
     for p in res.json()['data']['children']:
         p = p['data']
-        post = Post(p['title'], p['subreddit'], p['score'], p['author_fullname'], p['selftext'], p['id'])
+        # calculate when the post was created
+        dif_time = datetime.datetime.now() - datetime.datetime.fromtimestamp(p['created_utc'])
+        hours = round(dif_time.total_seconds() / 3600)
+        time_ago = ""
+        if hours < 24:
+            time_ago = f"{hours} hours ago"
+        else:
+            days = round(hours / 24)
+            time_ago = f"{days} days ago" 
+            
+        selftext = p['selftext']
+        try:
+            selftext = p['url_overridden_by_dest']
+        except:
+            pass
+        
+        post = Post(p['title'], p['subreddit'], p['score'], p['author'], selftext, p['id'], time_ago)
         comments = get_post_details(post.subreddit, post.id)
         post.set_comments(comments)
         post_list.append(post)
@@ -64,4 +81,3 @@ def write_to_file(collection, filename):
             if i != len(collection) - 1:
                 file.write(',')
         file.write(']')
-# write_to_file(get_posts("all", 5), 'test1.json')
